@@ -37,7 +37,7 @@ public:
 	~serverConnecter();
 
 	SOCKET ConnectSocket;
-	bool versionReady, versionEligible;
+	bool versionReady, versionEligible, loginReady;
 
 	void connectToServer();
 	void sendMessage(const char *msg, int length);

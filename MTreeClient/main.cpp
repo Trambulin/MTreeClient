@@ -1,10 +1,15 @@
 #include<iostream>
-#include<string>
 #include"serverConnecter.h"
+#include"GUIListener.h"
 //#include"scryptCalc.h"
 
 int main()
 {
+	//GUIListener gg;
+	//GUIListener::inputHandler(&gg);
+	GUIListener::writeMsgToFile("fg", "dfg");
+	return 0;
+
 	char f;
 	serverConnecter *server=nullptr;
 	std::thread *inputHandleThread;
@@ -39,7 +44,13 @@ int main()
 		}
 		server->sendMessage(fullMsg, msg.length()+2);
 	}
-	
+	do {
+		Sleep(10);
+	} while (!server->loginReady);
+	std::cout << "Login Done";
+	while (1) {
+		Sleep(1000);
+	}
 	char b;
 	std::cout << "actung";
 	std::cin >> b;

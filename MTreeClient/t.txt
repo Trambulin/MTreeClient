@@ -1,0 +1,2 @@
+GUI;login;test?test
+CLI;login;success

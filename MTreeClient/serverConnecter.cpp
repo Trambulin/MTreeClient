@@ -1,13 +1,13 @@
 #include<ws2tcpip.h>
 #include<thread>
 #include<chrono>
-//#include<iostream>
+#include<iostream>
 #include"serverConnecter.h"
 #include"scryptCalc.h"
 
 serverConnecter::serverConnecter()
 {
-	versionReady = false; algReady = false;
+	versionReady = false; algReady = false, loginReady=false;
 	threadNum = std::thread::hardware_concurrency();
 	if (threadNum < 1) //threadCount call failed
 		threadNum = 1;
@@ -33,7 +33,7 @@ serverConnecter::~serverConnecter()
 
 void serverConnecter::connectToServer()
 {
-	iResult = getaddrinfo("192.168.214.129", DEFAULT_PORT, &hints, &result);
+	iResult = getaddrinfo("192.168.233.128", DEFAULT_PORT, &hints, &result);
 	if (iResult != 0) {
 		WSACleanup();
 		throw "getaddrinfo failed";  //errorCode in iResult
@@ -193,11 +193,42 @@ void serverConnecter::messageHandler()
 			versionReady = true;
 		}
 		else if (msgType == 1) { //result of registration
+			char result = fullMsgContainer[2];
+			if (result == 0) {
+				std::cout << "registration succeded" << std::endl;
+			}
+			else {
+				std::cout << "registration failed" << std::endl;
+			}
 		}
 		else if (msgType == 2) { //result of login
+			char result = fullMsgContainer[2];
+			if (result == 0) {
+				loginReady = true;
+			}
+			else {
+				std::cout << "login failed" << std::endl;
+			}
 		}
 		else if (msgType == 3) { //ask for speed
-			algDetermineAndSpeed();
+			char sendArr[7];
+			sendArr[0] = 0; sendArr[1] = 3;
+			sendArr[2] = 1;
+			uint32_t hashperSec=22;
+			sendArr[3] = (hashperSec >> 24);
+			sendArr[4] = (hashperSec >> 16);
+			sendArr[5] = (hashperSec >> 8);
+			sendArr[6] = (hashperSec);
+			sendMessage(sendArr, 7);
+			std::cout << "speed sent" << std::endl;
+			//algDetermineAndSpeed();
+		}
+		else if (msgType == 4) {
+			char *logMsg = new char[fullMContLength - 1];
+			memcpy(logMsg, fullMsgContainer + 2, fullMContLength - 2);
+			logMsg[fullMContLength - 2] = '\0';
+			std::cout << logMsg << std::endl;
+			delete[] logMsg;
 		}
 
 		//applog::log(LOG_NOTICE, "One message appeared:");
