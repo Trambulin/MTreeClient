@@ -22,23 +22,27 @@ private:
 	bool algReady;
 	struct addrinfo *result, *ptr, hints;
 	char* fullMsgContainer;
-	std::vector<std::thread> calcThreads;
-	std::vector<algCalc*> calcArray;
+	//std::vector<std::thread*> calcThreads;
+	//std::vector<algCalc*> calcArray;
 	//std::thread *calcThreads;
 	//algCalc *calcArray;
 
+	void(*writeToCommFile)(std::string, std::string);
 	inline void uint16ToChar2(uint16_t src, char dest[2]);
 	inline uint16_t char2ToUint16(char src[2]);
 	void algDetermineAndSpeed();
 	void messageHandler();
 	void bufferCopy(int bufLength, int startIndex, int actualBufLength);
 public:
-	serverConnecter();
+	serverConnecter(void (*writeToFile)(std::string,std::string));
 	~serverConnecter();
 
 	SOCKET ConnectSocket;
-	bool versionReady, versionEligible, loginReady;
+	bool versionReady, versionEligible, loginReady, startReady, endThread;
+	std::vector<algCalc*> calcArray;
+	std::vector<std::thread*> calcThreads;
 
+	void dataProcessing();
 	void connectToServer();
 	void sendMessage(const char *msg, int length);
 	void bufferMsgCheck(int bufLength, bool recurCall = false);

@@ -8,11 +8,11 @@ public:
 	GUIListener(serverConnecter *serverPointer);
 	~GUIListener();
 
+	bool endRun;
 	static void inputHandler(GUIListener *connecter);
 	static void writeMsgToFile(std::string type, std::string msg);
 
 private:
-	const char fileName[6] = "t.txt";
 	serverConnecter *server;
 
 	void registrationLine(std::string namePass);

@@ -5,9 +5,11 @@
 #include <Windows.h>
 
 using namespace std;
+const char fileName[6] = "t.txt";
 
 GUIListener::GUIListener(serverConnecter *serverPointer)
 {
+	endRun = false;
 	server = serverPointer;
 }
 
@@ -48,11 +50,30 @@ void GUIListener::handleGUIMsgLine(std::string guiLine)
 	else if (lineParts[1] == "login") {
 		loginLine(lineParts[2]);
 	}
+	else if (lineParts[1] == "start") {
+		server->startReady = true;
+		//server->dataProcessing();
+		writeMsgToFile("start", "success");
+	}
 	else if (lineParts[1] == "currency") {
 	}
 	else if (lineParts[1] == "balance") {
 	}
 	else if (lineParts[1] == "payout") {
+	}
+	else if (lineParts[1] == "stop") {
+		char *fullMsg = new char[3];
+		fullMsg[0] = 0; fullMsg[1] = 10; fullMsg[2] = 0;
+		server->sendMessage(fullMsg, 3);
+		endRun = true; server->endThread = true;
+		for (size_t i = 0; i < server->calcArray.size(); i++)
+		{
+			server->calcArray[i]->overThread();
+		}
+		for (size_t i = 0; i < server->calcThreads.size(); i++)
+		{
+			server->calcThreads[i]->join();
+		}
 	}
 }
 
@@ -60,8 +81,9 @@ void GUIListener::handleGUIMsgs(std::string guiMsgs)
 {
 	vector<string> lines = split(guiMsgs, '\n');
 	for (int i = 0; i < lines.size(); i++) {
+		handleGUIMsgLine(lines[i]);
 		cout << lines[i] << endl;
-		cout << "sorvegeee" << endl;
+		//cout << "sorvegeee" << endl;
 	}
 }
 
@@ -88,34 +110,42 @@ void GUIListener::inputHandler(GUIListener * connecter)
 	string line, guiMsgs, cliMsgs;
 	do {
 		guiMsgs = ""; cliMsgs = "";
-		ifstream commFile("t.txt");
-		if (commFile.is_open()) {
-			while (getline(commFile, line)) {
-				if (line.substr(0, 3) == "GUI") {
-					guiMsgs += line;
+		try {
+			ifstream commFile(fileName);
+			if (commFile.is_open()) {
+				while (getline(commFile, line)) {
+					if (line.substr(0, 3) == "GUI") {
+						guiMsgs += line;
+					}
+					else {
+						cliMsgs += line;
+					}
 				}
-				else {
-					cliMsgs += line;
-				}
+				commFile.close();
 			}
-			commFile.close();
-			ofstream commRewrite("t.txt");
-			if (commRewrite.is_open())
-			{
-				commRewrite << cliMsgs;
-				commRewrite.close();
-				connecter->handleGUIMsgs(guiMsgs);
+			if(cliMsgs!="" || guiMsgs!=""){
+				Sleep(22);
+				ofstream commRewrite(fileName);
+				if (commRewrite.is_open())
+				{
+					commRewrite << cliMsgs;
+					commRewrite.close();
+					connecter->handleGUIMsgs(guiMsgs);
+				}
 			}
 		}
-		Sleep(200);
-	} while (true);
+		catch (...) {
+
+		}
+		Sleep(211);
+	} while (!connecter->endRun);
 }
 
 void GUIListener::writeMsgToFile(std::string type, std::string msg)
 {
 	bool isDone = false;
 	while (!isDone) {
-		ofstream commAppend("t.txt", std::ofstream::out | std::ofstream::app);
+		ofstream commAppend(fileName, std::ofstream::out | std::ofstream::app);
 		if (commAppend.is_open())
 		{
 			commAppend << "CLI;"; commAppend << type; commAppend << ";";

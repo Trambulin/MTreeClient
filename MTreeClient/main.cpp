@@ -7,17 +7,21 @@ int main()
 {
 	//GUIListener gg;
 	//GUIListener::inputHandler(&gg);
-	GUIListener::writeMsgToFile("fg", "dfg");
-	return 0;
+	//GUIListener::writeMsgToFile("fg", "dfg");
+	//return 0;
 
 	char f;
 	serverConnecter *server=nullptr;
-	std::thread *inputHandleThread;
+	GUIListener *guiPart = nullptr;
+	std::thread *inputHandleThread=nullptr;
+	std::thread *guiHandleThread=nullptr;
 	try
 	{
-		server = new serverConnecter();
+		server = new serverConnecter(GUIListener::writeMsgToFile);
 		server->connectToServer();
 		inputHandleThread = new std::thread(serverConnecter::inputHandler, server);
+		guiPart = new GUIListener(server);
+		guiHandleThread = new std::thread(GUIListener::inputHandler,guiPart);
 	}
 	catch (const std::exception&)
 	{
@@ -34,7 +38,7 @@ int main()
 	else
 	{
 		std::cout << "client achieved version check, sending login";
-		std::string user = "soma";
+		/*std::string user = "soma";
 		std::string pass = "ejha";
 		std::string msg = user + (char)1 + pass;
 		char *fullMsg = new char[2 + msg.length()];
@@ -42,17 +46,19 @@ int main()
 		for (size_t i = 0; i < msg.length(); i++) {
 			fullMsg[i + 2] = msg[i];
 		}
-		server->sendMessage(fullMsg, msg.length()+2);
+		server->sendMessage(fullMsg, msg.length()+2);*/
 	}
 	do {
 		Sleep(10);
 	} while (!server->loginReady);
 	std::cout << "Login Done";
-	while (1) {
-		Sleep(1000);
+	while (!guiPart->endRun) {
+		Sleep(200);
 	}
 	char b;
-	std::cout << "actung";
-	std::cin >> b;
+	std::cout << "mining over";
+	inputHandleThread->join();
+	guiHandleThread->join();
+	//std::cin >> b;
 	return 0;
 }

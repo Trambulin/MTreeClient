@@ -1,6 +1,7 @@
 #include<string.h>
 #include<chrono>
 #include"scryptCalc.h"
+#include<iostream>
 
 std::mutex scryptCalc::variableValuesMtx;
 
@@ -202,8 +203,8 @@ void scryptCalc::runScrypt(uint32_t beginValue, uint32_t lastValue)
 		data[19] = beginValue++;
 		uint32_t tstate[8], ostate[8];
 		uint32_t X[32];
-		uint32_t *V;
-		V = (uint32_t *)(((uintptr_t)(scratchbuf)+63) & ~(uintptr_t)(63));
+		uint32_t V[1012*33];
+		//V = (uint32_t *)(((uintptr_t)(scratchbuf)+63) & ~(uintptr_t)(63));
 		memcpy(tstate, midstate, 32);
 		HMAC_SHA256_80_init(data, tstate, ostate);
 		PBKDF2_SHA256_80_128(tstate, ostate, data, X);
@@ -212,8 +213,11 @@ void scryptCalc::runScrypt(uint32_t beginValue, uint32_t lastValue)
 		if (hash[7] <= target[7] && hashTargetTest()) {
 			//SUBMIT
 		}
-		if (beginValue%500==1 && calcOver) { //threadOver check is slow, enough to check every ~(half a sec)
+		if (beginValue % 2500 == 1 /*&& calcOver*/) { //threadOver check is slow, enough to check every ~(half a sec)
+			std::cout << "counted hash: " << hash[7] << std::endl;
+			if (calcOver) {
 				break;
+			}
 		}
 		if (cycleCounter > 1000) {
 			endT = std::chrono::high_resolution_clock::now();

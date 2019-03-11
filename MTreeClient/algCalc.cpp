@@ -15,14 +15,14 @@ algCalc::~algCalc()
 
 void algCalc::overThread()
 {
-	calcOver = false; threadOver = false;
+	calcOver = true; threadOver = true;
 }
 
 void algCalc::threadCalcRun(algCalc *aC)
 {
 	while (1) {
 		std::unique_lock<std::mutex> lock(algCalc::calcThreadMtx);
-		algCalc::signalConVar.wait(lock);
+		//algCalc::signalConVar.wait(lock);
 		aC->runAlgorithm();
 		if (aC->threadOver) {
 			break;

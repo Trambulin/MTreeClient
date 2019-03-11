@@ -5,9 +5,9 @@
 #include"serverConnecter.h"
 #include"scryptCalc.h"
 
-serverConnecter::serverConnecter()
+serverConnecter::serverConnecter(void (*writeToFile)(std::string,std::string))
 {
-	versionReady = false; algReady = false, loginReady=false;
+	versionReady = false; algReady = false; loginReady = false; startReady = false, endThread = false;
 	threadNum = std::thread::hardware_concurrency();
 	if (threadNum < 1) //threadCount call failed
 		threadNum = 1;
@@ -21,6 +21,7 @@ serverConnecter::serverConnecter()
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
+	writeToCommFile = writeToFile;
 }
 
 serverConnecter::~serverConnecter()
@@ -111,7 +112,7 @@ void serverConnecter::algDetermineAndSpeed()
 			calcArray[i]->overThread();
 		}
 		for (size_t i = 0; i < calcThreads.size(); i++) {
-			calcThreads[i].join();
+			calcThreads[i]->join();
 		}
 		for (size_t i = 0; i < calcArray.size(); i++) {
 			delete calcArray[i];
@@ -137,13 +138,13 @@ void serverConnecter::algDetermineAndSpeed()
 				calcArray[i]->threadOver = true;
 			}
 			for (size_t i = 0; i < threadNum; i++) {
-				calcThreads.push_back(std::thread(algCalc::threadCalcRun, calcArray[i]));
+				calcThreads.push_back(new std::thread(algCalc::threadCalcRun, calcArray[i]));
 				//calcThreads[i] = std::thread(algCalc::threadCalcRun, &(calcArray[i]));
 			}
 			start = std::chrono::high_resolution_clock::now();
 			algCalc::signalConVar.notify_all();
 			for (size_t i = 0; i < threadNum; i++) {
-				calcThreads[i].join();
+				calcThreads[i]->join();
 			}
 			end = std::chrono::high_resolution_clock::now();
 			hashperSec = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -163,6 +164,52 @@ void serverConnecter::algDetermineAndSpeed()
 	sendArr[5] = (hashperSec >> 8);
 	sendArr[6] = (hashperSec);
 	sendMessage(sendArr, 7);
+}
+
+void serverConnecter::dataProcessing() {
+	/*for (size_t i = 0; i < calcArray.size(); i++)
+	{
+		calcArray[i]->overThread();
+	}
+	calcArray.clear();
+	calcThreads.clear();*/
+	std::cout << "notify Arrived" << std::endl;
+	while (!startReady) {
+		Sleep(100);
+	}
+	if (startReady) {
+		uint32_t data[20];
+		for (size_t i = 0; i < 20; i++)
+		{
+			uint32_t temp = 0;
+			for (size_t j = 0; j < 4; j++)
+			{
+				temp += fullMsgContainer[7 + (i * 4) + j];
+				temp <<= 8;
+			}
+			data[i] = temp;
+		}
+		uint32_t target[8];
+		for (size_t i = 0; i < 8; i++)
+		{
+			uint32_t temp = 0;
+			for (size_t j = 0; j < 4; j++)
+			{
+				temp += fullMsgContainer[87 + (i * 4) + j];
+				temp <<= 8;
+			}
+			target[i] = temp;
+		}
+		scryptCalc calcObj(data);
+		for (size_t i = 0; i < 8; i++)
+		{
+			calcObj.target[i] = target[i];
+		}
+		calcObj.firstVal = 0; calcObj.lastVal = 1000000;
+		algCalc *algPointer = &calcObj;
+		calcThreads.push_back(new std::thread(algCalc::threadCalcRun, algPointer));
+		calcArray.push_back(algPointer);
+	}
 }
 
 //processing the received core (no header/footer) message
@@ -196,18 +243,22 @@ void serverConnecter::messageHandler()
 			char result = fullMsgContainer[2];
 			if (result == 0) {
 				std::cout << "registration succeded" << std::endl;
+				writeToCommFile("registration", "success");
 			}
 			else {
 				std::cout << "registration failed" << std::endl;
+				writeToCommFile("registration", "failed");
 			}
 		}
 		else if (msgType == 2) { //result of login
 			char result = fullMsgContainer[2];
 			if (result == 0) {
 				loginReady = true;
+				writeToCommFile("login", "success");
 			}
 			else {
 				std::cout << "login failed" << std::endl;
+				writeToCommFile("login", "failed");
 			}
 		}
 		else if (msgType == 3) { //ask for speed
@@ -225,9 +276,10 @@ void serverConnecter::messageHandler()
 		}
 		else if (msgType == 4) {
 			char *logMsg = new char[fullMContLength - 1];
+			dataProcessing();
 			memcpy(logMsg, fullMsgContainer + 2, fullMContLength - 2);
 			logMsg[fullMContLength - 2] = '\0';
-			std::cout << logMsg << std::endl;
+			//std::cout << logMsg << std::endl;
 			delete[] logMsg;
 		}
 
